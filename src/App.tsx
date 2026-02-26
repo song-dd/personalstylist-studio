@@ -1,4 +1,4 @@
-import { useEffect, useState, type ChangeEvent, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react'
 import './App.css'
 
 type Measurements = {
@@ -22,9 +22,12 @@ function App() {
   const [photo, setPhoto] = useState<File | null>(null)
   const [photoUrl, setPhotoUrl] = useState('')
   const [report, setReport] = useState('')
+  const [hairText, setHairText] = useState('')
   const [hairImage, setHairImage] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
+  const [isDragActive, setIsDragActive] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
 
   useEffect(() => {
     if (!photo) {
@@ -51,10 +54,33 @@ function App() {
     setPhoto(file)
   }
 
+  const handleDrop = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault()
+    setIsDragActive(false)
+    const file = event.dataTransfer.files?.[0]
+    if (file && file.type.startsWith('image/')) {
+      setPhoto(file)
+    }
+  }
+
+  const handleDragOver = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault()
+    setIsDragActive(true)
+  }
+
+  const handleDragLeave = () => {
+    setIsDragActive(false)
+  }
+
+  const handleOpenFile = () => {
+    fileInputRef.current?.click()
+  }
+
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     setError('')
     setReport('')
+    setHairText('')
     setHairImage('')
 
     if (!measurements.height || !measurements.weight) {
@@ -81,6 +107,7 @@ function App() {
       }
 
       setReport(data.report || '리포트를 생성했지만 내용이 비어 있습니다.')
+      setHairText(data.hairText || '')
       setHairImage(data.hairImage || '')
     } catch (err) {
       setError(err instanceof Error ? err.message : '알 수 없는 오류가 발생했습니다.')
@@ -132,15 +159,35 @@ function App() {
             />
           </label>
 
-          <label className="field file-field">
+          <div className="field file-field">
             <span>본인 사진</span>
-            <input
-              type="file"
-              accept="image/*"
-              onChange={handlePhotoChange}
-            />
-            <small>정면 전신 사진을 추천해요.</small>
-          </label>
+            <div
+              className={`dropzone ${isDragActive ? 'active' : ''}`}
+              role="button"
+              tabIndex={0}
+              onClick={handleOpenFile}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault()
+                  handleOpenFile()
+                }
+              }}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+            >
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handlePhotoChange}
+                aria-label="본인 사진 업로드"
+              />
+              <strong>드래그 앤 드롭</strong>
+              <span>또는 클릭해서 사진 선택</span>
+              <small>정면 전신 사진을 추천해요.</small>
+            </div>
+          </div>
 
           <button className="primary" type="submit" disabled={isLoading}>
             {isLoading ? '리포트 생성 중...' : '스타일 컨설팅 받기'}
@@ -169,12 +216,25 @@ function App() {
         <div className="report-body">
           {report ? <pre>{report}</pre> : <p>리포트를 생성하면 여기에 표시됩니다.</p>}
         </div>
-        {hairImage ? (
-          <div className="hair-image">
-            <h3>헤어스타일 제안 (3x3)</h3>
-            <img src={hairImage} alt="추천 헤어스타일 9가지 그리드" />
+      </section>
+
+      <section className="panel hair-panel">
+        <div className="panel-header">
+          <h2>헤어스타일 추천</h2>
+          <p>텍스트 추천과 이미지 그리드를 분리해 보여줍니다.</p>
+        </div>
+        <div className="hair-content">
+          <div className="hair-text">
+            {hairText ? <pre>{hairText}</pre> : <p>리포트를 생성하면 추천 목록이 표시됩니다.</p>}
           </div>
-        ) : null}
+          <div className="hair-image">
+            {hairImage ? (
+              <img src={hairImage} alt="추천 헤어스타일 9가지 그리드" />
+            ) : (
+              <p>이미지를 생성하면 여기에 표시됩니다.</p>
+            )}
+          </div>
+        </div>
       </section>
     </div>
   )

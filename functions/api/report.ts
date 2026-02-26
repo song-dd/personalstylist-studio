@@ -4,6 +4,8 @@ type Env = {
   OPENAI_IMAGE_MODEL?: string
 }
 
+const HAIR_SPLIT_MARKER = '---HAIR_RECOMMENDATIONS---'
+
 const dataUrlToBlob = (dataUrl: string) => {
   const [meta, base64] = dataUrl.split(',')
   if (!meta || !base64) {
@@ -46,7 +48,7 @@ export const onRequestPost = async (context: {
       )
     }
 
-    const userText = `키: ${height}cm\n몸무게: ${weight}kg\n요청: 체형에 맞는 스타일 컨설팅 리포트를 한국어로 작성해줘. 체형 특징 요약, 추천 스타일, 피해야 할 포인트, 기본 아이템 리스트, 컬러 팔레트 제안, 그리고 헤어스타일 추천(간단 설명 9개)을 포함해.`
+    const userText = `키: ${height}cm\n몸무게: ${weight}kg\n요청: 체형에 맞는 스타일 컨설팅 리포트를 한국어로 작성해줘. 체형 특징 요약, 추천 스타일, 피해야 할 포인트, 기본 아이템 리스트, 컬러 팔레트 제안을 포함해.\n마지막에는 반드시 아래 구분자를 그대로 출력하고, 그 아래에 헤어스타일 추천 9가지를 한 줄씩 작성해줘.\n${HAIR_SPLIT_MARKER}\n-`
 
     const content: Array<{ type: 'input_text' | 'input_image'; text?: string; image_url?: string }> = [
       { type: 'input_text', text: userText },
@@ -94,6 +96,10 @@ export const onRequestPost = async (context: {
       .join('\n')
       .trim()
 
+    const [reportText, hairTextRaw] = text.split(HAIR_SPLIT_MARKER)
+    const report = (reportText ?? '').trim()
+    const hairText = (hairTextRaw ?? '').trim()
+
     let hairImageDataUrl = ''
     if (photoDataUrl) {
       const form = new FormData()
@@ -103,6 +109,7 @@ export const onRequestPost = async (context: {
         '너는 최고의 헤어스타일리스트야. 3x3 그리드로, 각 칸에 어떤 헤어스타일인지 짧은 라벨을 포함해. 첨부한 사진 속 사람의 얼굴은 절대 바꾸지 말고 기존 얼굴 그대로 유지하고 헤어스타일만 바꿔. 얼굴형/이목구비/피부톤/조명/배경은 최대한 유지해.'
       )
       form.append('image', dataUrlToBlob(photoDataUrl), 'photo.png')
+      form.append('input_fidelity', 'high')
       form.append('size', '1024x1024')
       form.append('quality', 'auto')
       form.append('background', 'auto')
@@ -125,9 +132,16 @@ export const onRequestPost = async (context: {
       }
     }
 
-    return new Response(JSON.stringify({ report: text || '', hairImage: hairImageDataUrl }), {
+    return new Response(
+      JSON.stringify({
+        report: report || text || '',
+        hairText,
+        hairImage: hairImageDataUrl,
+      }),
+      {
       headers: { 'Content-Type': 'application/json' },
-    })
+      }
+    )
   } catch (error) {
     return new Response(
       JSON.stringify({ error: 'Invalid request', detail: String(error) }),
