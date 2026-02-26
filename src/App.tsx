@@ -22,6 +22,7 @@ function App() {
   const [photo, setPhoto] = useState<File | null>(null)
   const [photoUrl, setPhotoUrl] = useState('')
   const [report, setReport] = useState('')
+  const [hairImage, setHairImage] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -54,6 +55,7 @@ function App() {
     event.preventDefault()
     setError('')
     setReport('')
+    setHairImage('')
 
     if (!measurements.height || !measurements.weight) {
       setError('키와 몸무게를 입력해 주세요.')
@@ -79,6 +81,7 @@ function App() {
       }
 
       setReport(data.report || '리포트를 생성했지만 내용이 비어 있습니다.')
+      setHairImage(data.hairImage || '')
     } catch (err) {
       setError(err instanceof Error ? err.message : '알 수 없는 오류가 발생했습니다.')
     } finally {
@@ -166,6 +169,12 @@ function App() {
         <div className="report-body">
           {report ? <pre>{report}</pre> : <p>리포트를 생성하면 여기에 표시됩니다.</p>}
         </div>
+        {hairImage ? (
+          <div className="hair-image">
+            <h3>헤어스타일 제안 (3x3)</h3>
+            <img src={hairImage} alt="추천 헤어스타일 9가지 그리드" />
+          </div>
+        ) : null}
       </section>
     </div>
   )
